@@ -13,25 +13,25 @@ provider "aws" {
 
 resource "null_resource" "local" {
 	provisioner "local-exec" {
-		command = "sed -i 's/\\(log_group_name *= *\\).*/\\1 TestLogGroupFlaskr/' /home/madhu/devOps/automate_clodwatch/cloudwatch_config.conf; sed -i 's/\\(log_stream_name *= *\\).*/\\1 StreamFlaskr/' /home/madhu/devOps/automate_clodwatch/cloudwatch_config.conf"
+		command = "sed -i 's/\\(log_group_name *= *\\).*/\\1 ${var.log_group}/' ${file(var.source_cloudwatch_config)}; sed -i 's/\\(log_stream_name *= *\\).*/\\1 ${var.log_stream}/' ${file(var.source_cloudwatch_config)}"
 	}
 
 	provisioner "file" {
 		connection {
-			user = "ubuntu"
-			host = "13.126.114.107"
+			user = "${var.host_user}"
+			host = "${var.host_ip}"
 			agent = true
 			timeout = "3m"
 			private_key = "${file(var.keyfile)}"
 		}
-		source      = "/home/madhu/devOps/automate_clodwatch/cloudwatch_config.conf"
-		destination = "/home/ubuntu/cloudwatch_config.conf"
+		source      = "${file(var.source_cloudwatch_config)}"
+		destination = "/home/${var.host_user}/cloudwatch_config.conf"
 	}
 
 	provisioner "remote-exec" {
 		connection {
-			user = "ubuntu"
-			host = "13.126.114.107"
+			user = "${var.host_user}"
+			host = "${var.host_ip}"
 			agent = true
 			timeout = "3m"
 			private_key = "${file(var.keyfile)}"
@@ -40,7 +40,7 @@ resource "null_resource" "local" {
 		inline = [
 			"curl https://s3.amazonaws.com/aws-cloudwatch/downloads/latest/awslogs-agent-setup.py -O",
 			"chmod +x ./awslogs-agent-setup.py",
-			"sudo python3 awslogs-agent-setup.py -n -r ${var.aws_region} -c /home/ubuntu/cloudwatch_config.conf"
+			"sudo python3 awslogs-agent-setup.py -n -r ${var.aws_region} -c /home/${var.host_user}/cloudwatch_config.conf"
 		]
 	}
 }
@@ -201,3 +201,4 @@ resource "aws_cloudwatch_log_subscription_filter" "test_cw_s3_logfilter" {
 	destination_arn = "${aws_kinesis_firehose_delivery_stream.test_stream.arn}"
 	distribution    = "Random"
 }
+
